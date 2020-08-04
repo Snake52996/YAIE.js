@@ -45,17 +45,12 @@
 		<script>
 			'use strict';
 			class Size{
-				height_;
-				width_;
 				constructor(height, width){
 					this.height_ = height;
 					this.width_ = width;
 				}
 			}
 			class ImagePart{
-				data_;
-				x_;
-				y_;
 				constructor(data, x, y){
 					this.data_ = data;
 					this.x_ = x;
@@ -131,7 +126,7 @@
 				main_canvas.height = natural_size.height_;
 				main_canvas.width = natural_size.width_;
 				edge = (natural_size.height_ > natural_size.width_ ? natural_size.width_ : natural_size.height_) / 25;
-				if(edge < 1) edge = 1;	// You should not use YAIE to operate such images...
+				if(edge < 1) edge = 1;	// You should not use YAIE to operate such images...really
 				cut(image, 0, 0, natural_size.width_, natural_size.height_);
 				merge(done);
 			}
