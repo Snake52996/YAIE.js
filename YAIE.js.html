@@ -39,11 +39,38 @@
 	<body>
 		<div id="sel">
 			<input id="img_input" type="file" accept="image/*" />
+			<input id="password" type="text" />
+			<button id="go" onclick="btn_click()">GO</button>
 			<div id="info">Select a picture here and wait. When the result is displayed, you can save it by touch&hold or right click, or select another picture by touch or click on it.</div>
 		</div>
 		<img id="preview"></img>
 		<script>
 			'use strict';
+			let main_canvas = document.createElement('canvas');
+			let main_canvas_context = main_canvas.getContext("2d");
+			let preview = document.getElementById("preview");
+			let selector = document.getElementById("img_input");
+			let sel = document.getElementById("sel");
+			let pass = document.getElementById("password");
+			preview.addEventListener("click", function(){
+				this.style.display = "none";
+				sel.style.display = "inline";
+			}, false);
+			class SeededRandom{
+				constructor(seed){
+					this.M = 714025;
+					this.A = 4096;
+					this.C = 150889;
+					this.seed_ = seed % this.M;
+				}
+				setSeed(seed){
+					this.seed_ = seed % this.M;
+				}
+				get(){
+					this.seed_ = (this.A * this.seed_ + this.C) % this.M;
+					return this.seed_;
+				}
+			}
 			class Size{
 				constructor(height, width){
 					this.height_ = height;
@@ -75,63 +102,18 @@
 				}
 				getNaturalSize.reader.readAsDataURL(file);
 			}
-			let main_canvas = document.createElement('canvas');
-			let main_canvas_context = main_canvas.getContext("2d");
-			let preview = document.getElementById("preview");
-			let selector = document.getElementById("img_input");
-			let sel = document.getElementById("sel");
-			let parts = new Array();
-			let edge = 50;
-			preview.addEventListener("click", function(){selector.click();}, false);
-			document.getElementById("img_input").addEventListener("change", img_input_change, false);
-			function cut(image, sx, sy, ex, ey){
-				if(ex - sx <= edge || ey - sy <= edge){
-					if(cut.canvas == undefined){
-						cut.canvas = document.createElement('canvas');
-					}
-					cut.canvas.width = ex - sx;
-					cut.canvas.height = ey - sy;
-					cut.canvas.getContext('2d').translate(cut.canvas.width / 2, cut.canvas.height / 2);
-					cut.canvas.getContext('2d').rotate(Math.PI);
-					cut.canvas.getContext('2d').translate(-cut.canvas.width / 2, -cut.canvas.height / 2);
-					cut.canvas.getContext('2d').drawImage(image, sx, sy, cut.canvas.width, cut.canvas.height, 0, 0, cut.canvas.width, cut.canvas.height);
-					parts.push(new ImagePart(cut.canvas.toDataURL(), sx, sy));
-				}else{
-					let mx = parseInt((sx + ex) / 2);
-					let my = parseInt((sy + ey) / 2);
-					cut(image, sx, sy, mx, my);
-					cut(image, mx, sy, ex, my);
-					cut(image, sx, my, mx, ey);
-					cut(image, mx, my, ex, ey);
-				}
-			}
-			function merge(callback){
-				merge.current_part = parts[0];
-				function afterLoad(){
-					main_canvas_context.drawImage(merge.img, merge.current_part.x_, merge.current_part.y_);
-					parts.shift();
-					if(parts.length) merge(callback);
-					else callback();
-				}
-				if(merge.img == undefined){
-					merge.img = new Image();
-					merge.img.onload = afterLoad;
-				}
-				merge.img.src = merge.current_part.data_;
-			}
-			function done(){
-				preview.src = main_canvas.toDataURL();
-			}
 			function main(image, natural_size){
+				let rd = new SeededRandom(parseInt(pass.value));
 				main_canvas.height = natural_size.height_;
 				main_canvas.width = natural_size.width_;
-				edge = (natural_size.height_ > natural_size.width_ ? natural_size.width_ : natural_size.height_) / 25;
-				if(edge < 1) edge = 1;	// You should not use YAIE to operate such images...really
-				cut(image, 0, 0, natural_size.width_, natural_size.height_);
-				merge(done);
+				main_canvas_context.drawImage(image, 0, 0);
+				let img_data = main_canvas_context.getImageData(0, 0, natural_size.width_, natural_size.height_);
+				for(let i = 0; i < img_data.data.length; ++i) img_data.data[i] ^= (rd.get() % 256);
+				main_canvas_context.putImageData(img_data, 0, 0);
+				preview.src = main_canvas.toDataURL();
 			}
-			function img_input_change(e){
-				let tFile = this.files[0];
+			function btn_click(e){
+				let tFile = selector.files[0];
 				if(tFile.type.indexOf("image/") == -1) return;
 				sel.style.display = "none";
 				getNaturalSize(tFile, main);
