@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title>YAIE.js</title>
+		<title>YAIEv2.js</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 		<style>
 			*{
@@ -28,20 +28,30 @@
 				left: 50%;
 				transform: translate(-50%, -50%);
 			}
-			#img_input, #info{
+			#img_input, #info, #password_container{
 				position: relative;
 				left: 50%;
 				transform: translateX(-50%);
 				text-align: center;
+			}
+			#go{
+				background-color: #4CAF50;
+				border: none;
+				color: white;
+			}
+			#info{
+				width: 60%;
 			}
 		</style>
 	</head>
 	<body>
 		<div id="sel">
 			<input id="img_input" type="file" accept="image/*" />
-			<input id="password" type="text" />
-			<button id="go" onclick="btn_click()">GO</button>
-			<div id="info">Select a picture here and wait. When the result is displayed, you can save it by touch&hold or right click, or select another picture by touch or click on it.</div>
+			<div id="password_container">
+				<input id="password" type="text" />
+				<button id="go" onclick="btn_click()">GO</button>
+			</div>
+			<div id="info">Select a picture here and provide a passphrase, then click the button. When the result is displayed, you can save it by touch&hold or right click, or select another picture by touch or click on it.</div>
 		</div>
 		<img id="preview"></img>
 		<script>
@@ -54,7 +64,7 @@
 			let pass = document.getElementById("password");
 			preview.addEventListener("click", function(){
 				this.style.display = "none";
-				sel.style.display = "inline";
+				sel.style.display = "block";
 			}, false);
 			class SeededRandom{
 				constructor(seed){
@@ -95,8 +105,16 @@
 				}
 				getNaturalSize.reader.readAsDataURL(file);
 			}
+			function getSeededRandom(text_seed){
+				let seed = 0;
+				let result = new SeededRandom();
+				for(let i = 0; i < text_seed.length; ++i)
+					seed = (seed * 65536 + text_seed.charCodeAt(i)) % result.M;
+				result.setSeed(seed);
+				return result;
+			}
 			function main(image, natural_size){
-				let rd = new SeededRandom(parseInt(pass.value));
+				let rd = getSeededRandom(pass.value);
 				main_canvas.height = natural_size.height_;
 				main_canvas.width = natural_size.width_;
 				main_canvas_context.drawImage(image, 0, 0);
@@ -108,6 +126,7 @@
 				}
 				main_canvas_context.putImageData(img_data, 0, 0);
 				preview.src = main_canvas.toDataURL();
+				preview.style.display = "inline";
 			}
 			function btn_click(e){
 				let tFile = selector.files[0];

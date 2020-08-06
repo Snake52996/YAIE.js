@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>YAIEv1.js</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<style>
+			*{
+				overflow: hidden;
+				padding: 0;
+				margin: 0;
+			}
+			body{
+				height: 100vh;
+				width: 100vw;
+			}
+			#preview{
+				max-height: 100vh;
+				max-width: 100vw;
+				position: relative;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+			}
+			#sel{
+				position: relative;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+			}
+			#img_input, #info{
+				position: relative;
+				left: 50%;
+				transform: translateX(-50%);
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="sel">
+			<input id="img_input" type="file" accept="image/*" />
+			<div id="info">Select a picture here and wait. When the result is displayed, you can save it by touch&hold or right click, or select another picture by touch or click on it.</div>
+		</div>
+		<img id="preview"></img>
+		<script>
+			'use strict';
+			class Size{
+				constructor(height, width){
+					this.height_ = height;
+					this.width_ = width;
+				}
+			}
+			class ImagePart{
+				constructor(data, x, y){
+					this.data_ = data;
+					this.x_ = x;
+					this.y_ = y;
+				}
+			}
+			function getNaturalSize(file, callback){
+				getNaturalSize.Size = getNaturalSize.Size || new Size(0, 0);
+				if(getNaturalSize.img == undefined){
+					getNaturalSize.img = new Image();
+					getNaturalSize.img.onload = function(){
+						getNaturalSize.Size.height_ = getNaturalSize.img.naturalHeight;
+						getNaturalSize.Size.width_ = getNaturalSize.img.naturalWidth;
+						callback(getNaturalSize.img, getNaturalSize.Size);
+					}
+				}
+				if(getNaturalSize.reader == undefined){
+					getNaturalSize.reader = new FileReader();
+					getNaturalSize.reader.onload = function(e){
+						getNaturalSize.img.src = e.target.result;
+					}
+				}
+				getNaturalSize.reader.readAsDataURL(file);
+			}
+			let main_canvas = document.createElement('canvas');
+			let main_canvas_context = main_canvas.getContext("2d");
+			let preview = document.getElementById("preview");
+			let selector = document.getElementById("img_input");
+			let sel = document.getElementById("sel");
+			let parts = new Array();
+			let edge = 50;
+			preview.addEventListener("click", function(){selector.click();}, false);
+			document.getElementById("img_input").addEventListener("change", img_input_change, false);
+			function cut(image, sx, sy, ex, ey){
+				if(ex - sx <= edge || ey - sy <= edge){
+					if(cut.canvas == undefined){
+						cut.canvas = document.createElement('canvas');
+					}
+					cut.canvas.width = ex - sx;
+					cut.canvas.height = ey - sy;
+					cut.canvas.getContext('2d').translate(cut.canvas.width / 2, cut.canvas.height / 2);
+					cut.canvas.getContext('2d').rotate(Math.PI);
+					cut.canvas.getContext('2d').translate(-cut.canvas.width / 2, -cut.canvas.height / 2);
+					cut.canvas.getContext('2d').drawImage(image, sx, sy, cut.canvas.width, cut.canvas.height, 0, 0, cut.canvas.width, cut.canvas.height);
+					parts.push(new ImagePart(cut.canvas.toDataURL(), sx, sy));
+				}else{
+					let mx = parseInt((sx + ex) / 2);
+					let my = parseInt((sy + ey) / 2);
+					cut(image, sx, sy, mx, my);
+					cut(image, mx, sy, ex, my);
+					cut(image, sx, my, mx, ey);
+					cut(image, mx, my, ex, ey);
+				}
+			}
+			function merge(callback){
+				merge.current_part = parts[0];
+				function afterLoad(){
+					main_canvas_context.drawImage(merge.img, merge.current_part.x_, merge.current_part.y_);
+					parts.shift();
+					if(parts.length) merge(callback);
+					else callback();
+				}
+				if(merge.img == undefined){
+					merge.img = new Image();
+					merge.img.onload = afterLoad;
+				}
+				merge.img.src = merge.current_part.data_;
+			}
+			function done(){
+				preview.src = main_canvas.toDataURL();
+			}
+			function main(image, natural_size){
+				main_canvas.height = natural_size.height_;
+				main_canvas.width = natural_size.width_;
+				edge = (natural_size.height_ > natural_size.width_ ? natural_size.width_ : natural_size.height_) / 25;
+				if(edge < 1) edge = 1;	// You should not use YAIE to operate such images...really
+				cut(image, 0, 0, natural_size.width_, natural_size.height_);
+				merge(done);
+			}
+			function img_input_change(e){
+				let tFile = this.files[0];
+				if(tFile.type.indexOf("image/") == -1) return;
+				sel.style.display = "none";
+				getNaturalSize(tFile, main);
+			}
+		</script>
+	</body>
+</html>
