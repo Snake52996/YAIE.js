@@ -77,13 +77,6 @@
 					this.width_ = width;
 				}
 			}
-			class ImagePart{
-				constructor(data, x, y){
-					this.data_ = data;
-					this.x_ = x;
-					this.y_ = y;
-				}
-			}
 			function getNaturalSize(file, callback){
 				getNaturalSize.Size = getNaturalSize.Size || new Size(0, 0);
 				if(getNaturalSize.img == undefined){
@@ -108,7 +101,11 @@
 				main_canvas.width = natural_size.width_;
 				main_canvas_context.drawImage(image, 0, 0);
 				let img_data = main_canvas_context.getImageData(0, 0, natural_size.width_, natural_size.height_);
-				for(let i = 0; i < img_data.data.length; ++i) img_data.data[i] ^= (rd.get() % 256);
+				for(let i = 0; i < img_data.data.length; i += 4){
+					img_data.data[i] ^= (rd.get() % 256);
+					img_data.data[i + 1] ^= (rd.get() % 256);
+					img_data.data[i + 2] ^= (rd.get() % 256);
+				}
 				main_canvas_context.putImageData(img_data, 0, 0);
 				preview.src = main_canvas.toDataURL();
 			}
